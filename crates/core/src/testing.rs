@@ -1,4 +1,16 @@
+use ropey::{Rope, RopeSlice};
+
 use crate::selection::{Range, Selection};
+
+pub fn transformed(input: &str, f: impl Fn(RopeSlice, Range) -> Range) -> String {
+    let (text, selection) = parse(input);
+    let rope = Rope::from(text.as_str());
+    let slice = rope.slice(..);
+    let result = selection
+        .transform(|range| f(slice, range))
+        .ensure_invariants(slice);
+    render(&text, &result)
+}
 
 struct Open {
     start: usize,

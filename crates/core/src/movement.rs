@@ -1,3 +1,7 @@
+mod word;
+
+pub use word::{WordMotion, move_word};
+
 use ropey::RopeSlice;
 
 use crate::grapheme::{nth_next_boundary, nth_prev_boundary};
