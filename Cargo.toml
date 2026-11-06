@@ -13,6 +13,8 @@ publish = false
 codon-core = { path = "crates/core" }
 codon-term = { path = "crates/term" }
 ropey = { version = "1.6", default-features = false, features = ["simd"] }
+unicode-segmentation = "1.13"
+unicode-width = { version = "0.2", default-features = false }
 
 [workspace.lints.rust]
 unsafe_code = "deny"
