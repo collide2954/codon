@@ -64,19 +64,13 @@ pub fn move_vertically(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::{parse, render};
+    use crate::testing::{parse, render, transformed};
     use Direction::{Backward, Forward};
     use Movement::{Extend, Move};
     use ropey::Rope;
 
     fn check(before: &str, after: &str, f: impl Fn(RopeSlice, Range) -> Range) {
-        let (text, selection) = parse(before);
-        let rope = Rope::from(text.as_str());
-        let text_slice = rope.slice(..);
-        let moved = selection
-            .transform(|range| f(text_slice, range))
-            .ensure_invariants(text_slice);
-        assert_eq!(render(&text, &moved), after, "from {before:?}");
+        assert_eq!(transformed(before, f), after, "from {before:?}");
     }
 
     fn horizontal(
