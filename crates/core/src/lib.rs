@@ -10,6 +10,7 @@ pub mod search;
 pub mod selection;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
+pub mod textobject;
 pub mod transaction;
 
 pub use change::{Assoc, Change, ChangeSet, Operation};
