@@ -1,10 +1,13 @@
+mod find;
 mod word;
 
+pub use find::{Find, find_char};
 pub use word::{WordMotion, move_word};
 
 use ropey::RopeSlice;
 
-use crate::grapheme::{nth_next_boundary, nth_prev_boundary};
+use crate::grapheme::{nth_next_boundary, nth_prev_boundary, prev_boundary};
+use crate::line_ending::line_end;
 use crate::position::{char_at_visual_column, visual_column};
 use crate::selection::{Direction, Range};
 
@@ -21,6 +24,18 @@ pub fn last_line(text: RopeSlice) -> usize {
     } else {
         last
     }
+}
+
+pub fn line_last_grapheme(text: RopeSlice, line: usize) -> usize {
+    prev_boundary(text, line_end(text, line)).max(text.line_to_char(line))
+}
+
+pub fn first_non_blank(text: RopeSlice, line: usize) -> Option<usize> {
+    let start = text.line_to_char(line);
+    text.slice(start..line_end(text, line))
+        .chars()
+        .position(|c| !c.is_whitespace())
+        .map(|offset| start + offset)
 }
 
 pub fn move_horizontally(
@@ -92,6 +107,24 @@ mod tests {
         assert_eq!(last_line(Rope::from("a\n\n").slice(..)), 1);
         assert_eq!(last_line(Rope::from("").slice(..)), 0);
         assert_eq!(last_line(Rope::from("\n").slice(..)), 0);
+    }
+
+    #[test]
+    fn line_last_grapheme_sits_before_the_terminator() {
+        let rope = Rope::from("ab\r\n\nc\u{301}");
+        let text = rope.slice(..);
+        assert_eq!(line_last_grapheme(text, 0), 1);
+        assert_eq!(line_last_grapheme(text, 1), 4);
+        assert_eq!(line_last_grapheme(text, 2), 5);
+    }
+
+    #[test]
+    fn first_non_blank_skips_indentation() {
+        let rope = Rope::from("  \tx y\n   \nz");
+        let text = rope.slice(..);
+        assert_eq!(first_non_blank(text, 0), Some(3));
+        assert_eq!(first_non_blank(text, 1), None);
+        assert_eq!(first_non_blank(text, 2), Some(11));
     }
 
     #[test]
