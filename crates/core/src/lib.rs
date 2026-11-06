@@ -3,6 +3,8 @@ pub mod chars;
 pub mod grapheme;
 pub mod history;
 pub mod line_ending;
+pub mod movement;
+pub mod position;
 pub mod selection;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
