@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 
 use ropey::RopeSlice;
 
+use crate::change::{Assoc, ChangeSet};
 use crate::grapheme::{align_next, align_prev, next_boundary, prev_boundary};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -158,6 +159,18 @@ impl Range {
     pub fn fragment<'a>(&self, text: RopeSlice<'a>) -> Cow<'a, str> {
         text.slice(self.from()..self.to()).into()
     }
+
+    pub fn map(self, changes: &ChangeSet) -> Self {
+        let (anchor, head) = match self.anchor.cmp(&self.head) {
+            Ordering::Equal => (Assoc::After, Assoc::After),
+            Ordering::Less => (Assoc::After, Assoc::Before),
+            Ordering::Greater => (Assoc::Before, Assoc::After),
+        };
+        Self::new(
+            changes.map_pos(self.anchor, anchor),
+            changes.map_pos(self.head, head),
+        )
+    }
 }
 
 #[must_use]
@@ -232,6 +245,10 @@ impl Selection {
         assert!(index < self.ranges.len(), "primary range out of bounds");
         self.primary = index;
         self
+    }
+
+    pub fn map(self, changes: &ChangeSet) -> Self {
+        self.transform(|range| range.map(changes))
     }
 
     pub fn cursors(self, text: RopeSlice) -> Self {
@@ -406,6 +423,46 @@ mod tests {
     fn fragment_is_the_covered_text() {
         let rope = Rope::from("hello world");
         assert_eq!(Range::new(11, 6).fragment(rope.slice(..)), "world");
+    }
+
+    #[test]
+    fn mapping_never_grows_a_range_at_its_edges() {
+        let changes =
+            ChangeSet::from_changes(6, [(2, 2, Some("XY".into())), (4, 4, Some("Z".into()))]);
+        assert_eq!(pair(Range::new(2, 4).map(&changes)), (4, 6));
+        assert_eq!(pair(Range::new(4, 2).map(&changes)), (6, 4));
+    }
+
+    #[test]
+    fn mapping_pushes_points_past_insertions() {
+        let changes = ChangeSet::from_changes(3, [(1, 1, Some("xy".into()))]);
+        assert_eq!(pair(Range::point(1).map(&changes)), (3, 3));
+    }
+
+    #[test]
+    fn mapping_forgets_the_column() {
+        let changes = ChangeSet::from_changes(3, [(0, 0, Some("x".into()))]);
+        let range = Range {
+            column: Some(4),
+            ..Range::new(1, 2)
+        };
+        assert_eq!(range.map(&changes).column, None);
+    }
+
+    #[test]
+    fn mapping_a_selection_merges_ranges_that_collapse_together() {
+        let changes = ChangeSet::from_changes(5, [(0, 3, None)]);
+        let selection = Selection::new(vec![Range::new(0, 1), Range::new(2, 3)], 1);
+        let mapped = selection.map(&changes);
+        assert_eq!(pairs(&mapped), [(0, 0)]);
+        assert_eq!(mapped.primary_index(), 0);
+    }
+
+    #[test]
+    fn mapping_keeps_ranges_that_end_up_adjacent() {
+        let changes = ChangeSet::from_changes(5, [(1, 4, None)]);
+        let selection = Selection::new(vec![Range::new(0, 2), Range::new(3, 5)], 0);
+        assert_eq!(pairs(&selection.map(&changes)), [(0, 1), (1, 2)]);
     }
 
     #[test]

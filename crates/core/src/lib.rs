@@ -5,8 +5,10 @@ pub mod line_ending;
 pub mod selection;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
+pub mod transaction;
 
 pub use change::{Assoc, Change, ChangeSet, Operation};
 pub use line_ending::LineEnding;
 pub use ropey::{Rope, RopeSlice};
 pub use selection::{Direction, Range, Selection};
+pub use transaction::Transaction;
