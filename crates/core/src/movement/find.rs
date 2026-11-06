@@ -1,6 +1,7 @@
 use ropey::RopeSlice;
 
 use super::Movement;
+use crate::search::{nth_char_after, nth_char_before};
 use crate::selection::{Direction, Range};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -41,10 +42,10 @@ fn find_forward(
 ) -> Option<usize> {
     let start = (cursor + 1).min(text.len_chars());
     match find {
-        Find::To => nth_after(text, target, start, count),
+        Find::To => nth_char_after(text, target, start, count),
         Find::Till => {
             let skip = usize::from(text.get_char(start) == Some(target));
-            nth_after(text, target, start, count + skip).map(|pos| pos.saturating_sub(1))
+            nth_char_after(text, target, start, count + skip).map(|pos| pos.saturating_sub(1))
         }
     }
 }
@@ -57,29 +58,12 @@ fn find_backward(
     find: Find,
 ) -> Option<usize> {
     match find {
-        Find::To => nth_before(text, target, cursor, count),
+        Find::To => nth_char_before(text, target, cursor, count),
         Find::Till => {
             let skip = usize::from(cursor > 0 && text.get_char(cursor - 1) == Some(target));
-            nth_before(text, target, cursor, count + skip).map(|pos| pos + 1)
+            nth_char_before(text, target, cursor, count + skip).map(|pos| pos + 1)
         }
     }
-}
-
-fn nth_after(text: RopeSlice, target: char, start: usize, n: usize) -> Option<usize> {
-    text.chars_at(start)
-        .enumerate()
-        .filter(|&(_, c)| c == target)
-        .nth(n.checked_sub(1)?)
-        .map(|(offset, _)| start + offset)
-}
-
-fn nth_before(text: RopeSlice, target: char, end: usize, n: usize) -> Option<usize> {
-    text.chars_at(end)
-        .reversed()
-        .enumerate()
-        .filter(|&(_, c)| c == target)
-        .nth(n.checked_sub(1)?)
-        .map(|(offset, _)| end - 1 - offset)
 }
 
 #[cfg(test)]
